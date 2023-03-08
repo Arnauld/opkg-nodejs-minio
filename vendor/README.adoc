@@ -1,0 +1,11 @@
+This folder is build from 
+
+[source, bash]
+....
+git clone git://git.yoctoproject.org/opkg-utils
+cd opkg-utils
+git checkout tags/0.5.0
+rm -rf .git/
+....
+
+
