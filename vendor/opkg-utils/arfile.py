@@ -52,6 +52,8 @@ class ArFile(object):
         self.directoryRead = False
 
         signature = self.f.readline()
+        print(signature == "!<arch>\n")
+        print(signature == b"!<arch>\n")
         assert signature == "!<arch>\n" or signature == b"!<arch>\n", "Old ipk format (non-deb) is unsupported, file: %s, magic: %s, expected %s" % (fn, signature, "!<arch>")
         self.directoryOffset = self.f.tell()
 

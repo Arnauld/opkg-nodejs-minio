@@ -5,11 +5,12 @@
   "author": "arnauld",
   "license": "MIT",
   "dependencies": {
-    "minio": "^7.0.32",
     "strtok3": "^7.0.0",
+    "tar": "^6.1.13",
     "token-types": "^5.0.1"
   },
   "devDependencies": {
+    "file-type": "^18.2.1",
     "mocha": "^10.2.0"
   },
   "scripts": {

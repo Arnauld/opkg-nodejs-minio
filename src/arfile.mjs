@@ -22,12 +22,42 @@ const readFileHeader = async function (tokenizer) {
     return header
 }
 
+const tarChecksumMatches = function(buffer) {
+    const str = buffer.toString('utf8', 148, 154).replace(/\0.*$/, '')
+    const readSum = Number.parseInt(str.trim(), 8); // Read sum in header
+	console.log('tarChecksumMatches:', readSum, str)
+    if (Number.isNaN(readSum)) {
+		return false;
+	}
+
+	let sum = 8 * 0x20; // Initialize signed bit sum
+
+	for (let index = offset; index < offset + 148; index++) {
+		sum += buffer[index];
+	}
+
+	for (let index = offset + 156; index < offset + 512; index++) {
+		sum += buffer[index];
+	}
+
+	return readSum === sum;
+}
+
 export const extractControl = async function (inStream) {
     const tokenizer = await strtok3.fromStream(inStream)
 
+    // check if tar
+    const buffer = Buffer.alloc(512)
+    const read = await tokenizer.peekBuffer(buffer, { mayBeLess: true })
+    console.log('bytes read:', read)
+    if(tarChecksumMatches(buffer)) {
+        console.log("tar file!")
+        return
+    }
+
     const magicNumber = await tokenizer.readToken(new Token.StringType(MAGIC_AR_HEADER.length, 'ascii'));
     if (magicNumber !== MAGIC_AR_HEADER) {
-        throw new Error('Invalid magic header; invalid archive file format')
+        throw new Error("Invalid magic header; invalid archive file format, got: '" + magicNumber + "'");
     }
 
     try {

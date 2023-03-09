@@ -196,6 +196,7 @@ class Package(object):
             ## sys.stderr.write("  extracting control.tar.gz from %s\n"% (fn,)) 
 
             if tarfile.is_tarfile(fn):
+                print("Tar file...")
                 tar = tarfile.open(fn, "r", f)
                 tarStream = tar.extractfile("./control.tar.gz")
             else:
