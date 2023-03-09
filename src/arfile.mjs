@@ -1,7 +1,9 @@
 import * as strtok3 from 'strtok3/core'
-import * as Token from 'token-types';
+import * as Token from 'token-types'
 import { Buffer } from 'buffer'
-import { EndOfStreamError } from 'strtok3';
+import { EndOfStreamError } from 'strtok3'
+import * as tar from 'tar'
+import { Readable } from 'stream'
 
 const MAGIC_AR_HEADER = '!<arch>\n'
 
@@ -22,64 +24,58 @@ const readFileHeader = async function (tokenizer) {
     return header
 }
 
-const tarChecksumMatches = function(buffer) {
-    const str = buffer.toString('utf8', 148, 154).replace(/\0.*$/, '')
-    const readSum = Number.parseInt(str.trim(), 8); // Read sum in header
-	console.log('tarChecksumMatches:', readSum, str)
-    if (Number.isNaN(readSum)) {
-		return false;
-	}
-
-	let sum = 8 * 0x20; // Initialize signed bit sum
-
-	for (let index = offset; index < offset + 148; index++) {
-		sum += buffer[index];
-	}
-
-	for (let index = offset + 156; index < offset + 512; index++) {
-		sum += buffer[index];
-	}
-
-	return readSum === sum;
+const streamToString = async function (stream) {
+    const chunks = [];
+    return new Promise((resolve, reject) => {
+        stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        stream.on('error', (err) => reject(err));
+        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    })
 }
 
 export const extractControl = async function (inStream) {
     const tokenizer = await strtok3.fromStream(inStream)
-
-    // check if tar
-    const buffer = Buffer.alloc(512)
-    const read = await tokenizer.peekBuffer(buffer, { mayBeLess: true })
-    console.log('bytes read:', read)
-    if(tarChecksumMatches(buffer)) {
-        console.log("tar file!")
-        return
-    }
 
     const magicNumber = await tokenizer.readToken(new Token.StringType(MAGIC_AR_HEADER.length, 'ascii'));
     if (magicNumber !== MAGIC_AR_HEADER) {
         throw new Error("Invalid magic header; invalid archive file format, got: '" + magicNumber + "'");
     }
 
-    try {
-        while (true) {
-            let header = await readFileHeader(tokenizer)
-            console.log(header)
-            if (header.fileIdentifier === 'debian-binary') {
-                const version = await tokenizer.readToken(new Token.StringType(header.fileSize))
-                console.log('debian version', version)
-                if (version !== "2.0\n")
-                    console.warn('Invalid debian version, ignoring... got: ', version)
+    return new Promise(async (resolve, reject) => {
+
+        try {
+            while (true) {
+                let header = await readFileHeader(tokenizer)
+                console.log(header)
+                if (header.fileIdentifier === 'debian-binary') {
+                    const version = await tokenizer.readToken(new Token.StringType(header.fileSize))
+                    console.log('debian version', version)
+                    if (version !== "2.0\n")
+                        console.warn('Invalid debian version, ignoring... got: ', version)
+                }
+                else if (header.fileIdentifier === 'control.tar.gz') {
+                    const buffer = Buffer.alloc(header.fileSize)
+                    await tokenizer.readBuffer(buffer)
+                    const stream = Readable.from(buffer)
+                    await stream.pipe(tar.list({
+                        filter: (path, entry) => {
+                            console.log('ar/tar/extract::1', path, entry)
+                            return path.includes('control')
+                        },
+                        onentry: (entry) => {
+                            const content = await streamToString(entry)
+                            console.log('ar/tar/extract::2', content)
+                        }
+                    }))
+                }
+                else
+                    tokenizer.ignore(header.fileSize)
             }
-            else if (header.fileIdentifier === 'control.tar.gz') {
-                tokenizer.ignore(header.fileSize)
+        } catch (err) {
+            if (err instanceof EndOfStreamError) {
+                throw new Error('File not found...')
             }
-            else
-                tokenizer.ignore(header.fileSize)
+            throw err
         }
-    } catch (err) {
-        if (err instanceof EndOfStreamError) {
-            throw new Error('File not found...')
-        }
-        throw err
-    }
+    })
 }

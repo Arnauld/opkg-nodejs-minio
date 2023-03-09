@@ -3,7 +3,8 @@ import * as fs from 'fs'
 import { fileTypeFromFile } from 'file-type';
 import * as tar from 'tar'
 
-const filepath = 'samples/repo/tcping_0.3-1_x86_64.ipk'
+//const filepath = 'samples/repo/tcping_0.3-1_x86_64.ipk'
+const filepath = 'samples/binaries/downloader_0.12.0_cortexa9hf.ipk'
 
 const filetype = await fileTypeFromFile(filepath)
 console.log(filetype);
@@ -32,6 +33,6 @@ if (filetype.ext === 'gz') {
         })
     )
 }
-else {
+else if (filetype.ext === 'deb') {
     extractControl(inStream).catch(err => console.error(err))
 }
