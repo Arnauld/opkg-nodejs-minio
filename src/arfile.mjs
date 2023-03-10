@@ -4,6 +4,7 @@ import { Buffer } from 'buffer'
 import { EndOfStreamError } from 'strtok3'
 import * as tar from 'tar'
 import { Readable } from 'stream'
+import { BufferBasedWritableStream } from './buffered-write-stream.mjs'
 
 const MAGIC_AR_HEADER = '!<arch>\n'
 
@@ -24,24 +25,15 @@ const readFileHeader = async function (tokenizer) {
     return header
 }
 
-const streamToString = async function (stream) {
-    const chunks = [];
-    return new Promise((resolve, reject) => {
-        stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-        stream.on('error', (err) => reject(err));
-        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    })
-}
-
 export const extractControl = async function (inStream) {
-    const tokenizer = await strtok3.fromStream(inStream)
-
-    const magicNumber = await tokenizer.readToken(new Token.StringType(MAGIC_AR_HEADER.length, 'ascii'));
-    if (magicNumber !== MAGIC_AR_HEADER) {
-        throw new Error("Invalid magic header; invalid archive file format, got: '" + magicNumber + "'");
-    }
-
     return new Promise(async (resolve, reject) => {
+
+        const tokenizer = await strtok3.fromStream(inStream)
+
+        const magicNumber = await tokenizer.readToken(new Token.StringType(MAGIC_AR_HEADER.length, 'ascii'));
+        if (magicNumber !== MAGIC_AR_HEADER) {
+            throw new Error("Invalid magic header; invalid archive file format, got: '" + magicNumber + "'");
+        }
 
         try {
             while (true) {
@@ -53,23 +45,32 @@ export const extractControl = async function (inStream) {
                     if (version !== "2.0\n")
                         console.warn('Invalid debian version, ignoring... got: ', version)
                 }
-                else if (header.fileIdentifier === 'control.tar.gz') {
+                else if (header.fileIdentifier.includes('control.tar.gz')) {
+                    console.log('scanning control.tar.gz')
                     const buffer = Buffer.alloc(header.fileSize)
                     await tokenizer.readBuffer(buffer)
+                    if(header.fileSize % 2 !== 0)
+                        await tokenizer.ignore(1)
                     const stream = Readable.from(buffer)
                     await stream.pipe(tar.list({
                         filter: (path, entry) => {
-                            console.log('ar/tar/extract::1', path, entry)
+                            console.log('ar/tar/extract::1', path)
                             return path.includes('control')
                         },
                         onentry: (entry) => {
-                            const content = await streamToString(entry)
-                            console.log('ar/tar/extract::2', content)
+                            const bws = new BufferBasedWritableStream()
+                            bws.on('finish', () => resolve(bws.buffer.toString()))
+                            entry.pipe(bws)
                         }
                     }))
+                    return
                 }
-                else
-                    tokenizer.ignore(header.fileSize)
+                else {
+                    if(header.fileSize % 2 !== 0)
+                        await tokenizer.ignore(header.fileSize + 1)
+                    else
+                        await tokenizer.ignore(header.fileSize)
+                }
             }
         } catch (err) {
             if (err instanceof EndOfStreamError) {
