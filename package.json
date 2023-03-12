@@ -5,6 +5,7 @@
   "author": "arnauld",
   "license": "MIT",
   "dependencies": {
+    "minio": "https://github.com/minio/minio-js.git",
     "strtok3": "^7.0.0",
     "tar": "^6.1.13",
     "token-types": "^5.0.1"

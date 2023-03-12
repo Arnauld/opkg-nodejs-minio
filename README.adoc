@@ -2,3 +2,8 @@
 ....
 ./vendor/opkg-utils/opkg-make-index -p out/Packages samples/binaries/
 ....
+
+
+http://localhost:9001/
+
+https://gist.github.com/harshavardhana/f05b60fe6f96803743f38bea4b565bbf
