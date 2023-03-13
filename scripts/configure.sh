@@ -12,6 +12,9 @@ mc admin policy set myminio consoleAdmin user=console
 
 mc mb --with-lock myminio/tenant1
 
+# Make bucket public to host/access static content.
+mc anonymous set download myminio/tenant1
+
 for f in    automount_1-40_x86_64.ipk \
             libgcc_8.4.0-11_armv7-3.2.ipk \
             tcping_0.3-1_x86_64.ipk \

@@ -1,0 +1,9 @@
+server {
+  listen ${NGINX_PORT};
+  server_name localhost;
+  location / {
+    rewrite ^/$ /static/index.html break;
+    proxy_set_header Host $http_host;
+    proxy_pass http://${MINIO_HOST}/${MINIO_STATIC_BUCKET}/;
+  }
+}

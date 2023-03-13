@@ -1,7 +1,21 @@
 [source,bash]
 ....
+docker-compose up
+....
+
+[source,bash]
+....
+node src/minio.mjs
+curl http://localhost:8080/x86_64/Packages
+....
+
+[source,bash]
+....
 ./vendor/opkg-utils/opkg-make-index -p out/Packages samples/binaries/
 ....
+
+
+
 
 
 http://localhost:9001/
