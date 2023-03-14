@@ -35,11 +35,11 @@ export class MinioGateway {
         });
     }
 
-    async generatePackage({ bucket, prefix, dir }) {
+    async generatePackage({ bucketName, prefix, dir }) {
         const self = this
         await fs.promises.mkdir(dir, { recursive: true })
 
-        const cmd = `./vendor/opkg-utils/opkg-make-index -p ${dir}/Packages ${dir}/`
+        const cmd = `./vendor/opkg-utils/opkg-make-index -v -a -u -p ${dir}/Packages ${dir}/`
         return new Promise((resolve, reject) => {
             exec(cmd, (error, stdout, stderr) => {
                 if (error) {
@@ -56,24 +56,24 @@ export class MinioGateway {
             const refs = ['Packages', 'Packages.gz', 'Packages.stamps']
             return Promise.all(refs.map(n => {
                 log.info(`Updating file ${prefix}/${n}; `)
-                return self.minioClient.fPutObject(bucket, `${prefix}/${n}`, `${dir}/${n}`)
+                return self.minioClient.fPutObject(bucketName, `${prefix}/${n}`, `${dir}/${n}`)
             }))
         })
     }
 
-    async doRebuildIndex({ bucket, prefix, objs }) {
+    async doRebuildIndex({ bucketName, prefix, objs }) {
         const self = this
         const workingDir = this.workingDir
         log.info('Rebuilding index; retrieving packages')
 
         if (objs.length == 0) {
-            return self.generatePackage({ bucket, prefix, dir: `${workingDir}/${prefix}` })
+            return self.generatePackage({ bucketName, prefix, dir: `${workingDir}/${prefix}` })
         }
         else {
             return new Promise((resolve, reject) => {
                 const ret = []
                 objs.forEach(obj => {
-                    self.minioClient.fGetObject(bucket, obj.name, `${workingDir}/${obj.name}`, function (e) {
+                    self.minioClient.fGetObject(bucketName, obj.name, `${workingDir}/${obj.name}`, function (e) {
                         ret.push(obj)
                         if (e) {
                             log.warn(e)
@@ -81,7 +81,7 @@ export class MinioGateway {
                         }
                         log.debug(`File retrieved ${obj.name}`)
                         if (ret.length === objs.length) {
-                            self.generatePackage({ bucket, prefix, dir: `${workingDir}/${prefix}` })
+                            self.generatePackage({ bucketName, prefix, dir: `${workingDir}/${prefix}` })
                                 .then(resolve)
                                 .catch(reject)
                         }
@@ -91,12 +91,12 @@ export class MinioGateway {
         }
     }
 
-    async doUpdateIndex({ bucket, prefix, objs }) {
+    async doUpdateIndex({ bucketName, prefix, objs }) {
         const self = this
         prefix = removeTrailingSlash(prefix)
         const pkgArr = objs.filter(p => p.name === `${prefix}/Packages`)
         if (pkgArr.length == 0) {
-            return this.doRebuildIndex({ bucket, prefix, objs })
+            return this.doRebuildIndex({ bucketName, prefix, objs })
         }
         const pkg = pkgArr[0]
         const refs = ['Packages', 'Packages.gz', 'Packages.stamps']
@@ -104,18 +104,18 @@ export class MinioGateway {
         if (objArr.length > 0) {
             refs.forEach(ref => objArr.push({ name: `${prefix}/${ref}` }))
             log.info(`Packages already exists; updating #${objArr.length} entries`, objArr.map(p => p.name))
-            return self.doRebuildIndex({ bucket, prefix, objs: objArr })
+            return self.doRebuildIndex({ bucketName, prefix, objs: objArr })
         }
         else {
             log.info('Packages already exists; nothing to update')
         }
     }
 
-    async updateIndex(bucket, prefix) {
+    async updateIndex(bucketName, prefix) {
         const self = this
         return new Promise((resolve, reject) => {
-            let config = { bucket, prefix, objs: [] }
-            const stream = self.minioClient.listObjectsV2(bucket, prefix)
+            let config = { bucketName, prefix, objs: [] }
+            const stream = self.minioClient.listObjectsV2(bucketName, prefix)
             stream.on('data', function (obj) {
                 config.objs.push(obj)
             })
@@ -126,8 +126,12 @@ export class MinioGateway {
         })
     }
 
-    async makeBucket(bucket) {
-        return this.minioClient.makeBucket(bucket)
+    async makeBucket(bucketName) {
+        return this.minioClient.makeBucket(bucketName)
+    }
+
+    async uploadFile(bucketName, objectName, localFilePath) {
+        return this.minioClient.fPutObject(bucketName, objectName, localFilePath)
     }
 }
 
