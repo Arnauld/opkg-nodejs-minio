@@ -53,6 +53,7 @@ def main():
     parser.add_argument('-r', dest='old_filename', help='Old Package index filename')
     parser.add_argument('-L', dest='locales_dir', help='Locales dirname')
     parser.add_argument('-v', dest='verbose', action="store_true", default=0, help='Verbose output')
+    parser.add_argument('-u', dest='update', action="store_true", default=0, help='Update old Package index, requires either -r or -p')
     parser.add_argument('--checksum', action='append', dest='checksum', choices=['md5', 'sha256'],
                         help='Select checksum type (default is md5)')
     parser.add_argument('packagesdir', help='Directory to be indexed')
@@ -69,6 +70,11 @@ def main():
     opt_f = args.opt_f
     checksum = args.checksum if args.checksum else ['md5']
     pkg_dir = args.packagesdir
+    update = args.update
+
+    if update and (not old_filename and not packages_filename):
+        sys.stderr.write("Missing Package index filename '-p' or previous '-r'\n")
+
 
     if packages_filename:
         stamplist_filename = packages_filename + ".stamps"
@@ -96,6 +102,9 @@ def main():
                     pkgs_stamps[filename] = int(stamp)
         except IOError:
             pass
+
+        if update:
+            packages = old_packages
 
     if verbose:
         sys.stderr.write("Reading in all the package info from %s\n" % (pkg_dir, ))
