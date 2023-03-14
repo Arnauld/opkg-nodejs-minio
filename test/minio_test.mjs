@@ -14,7 +14,10 @@ describe('minio/opkg', function () {
 
         await m.makeBucket(bucketName)
         await m.updateIndex(bucketName, 'x86_64/')
-        const data = await fs.promises.readFile(`${workingDir}/x86_64/Packages`, 'utf8');
+
+        //const data = await fs.promises.readFile(`${workingDir}/x86_64/Packages`, 'utf8');
+        const raw = await m.rawContent(bucketName, 'x86_64/Packages')
+        const data = raw.toString()
         assert.equal(data, '')
     });
 
@@ -28,8 +31,12 @@ describe('minio/opkg', function () {
         await m.makeBucket(bucketName)
         await m.uploadFile(bucketName, 'x86_64/automount_1-40_x86_64.ipk', "./samples/repo/automount_1-40_x86_64.ipk")
         await m.updateIndex(bucketName, 'x86_64/')
-        const data = await fs.promises.readFile(`${workingDir}/x86_64/Packages`, 'utf8');
+
+        //const data = await fs.promises.readFile(`${workingDir}/x86_64/Packages`, 'utf8');
+        const raw = await m.rawContent(bucketName, 'x86_64/Packages')
+        const data = raw.toString()
         assert.include(data, 'automount_1-40_x86_64.ipk')
+        assert.notInclude(data, 'tcping_0.3-1_x86_64.ipk')
     });
 
 
@@ -51,7 +58,9 @@ describe('minio/opkg', function () {
         await m.uploadFile(bucketName, 'x86_64/tcping_0.3-1_x86_64.ipk', "./samples/repo/tcping_0.3-1_x86_64.ipk")
         await m.updateIndex(bucketName, 'x86_64/')
 
-        const data = await fs.promises.readFile(`${workingDir}/x86_64/Packages`, 'utf8');
+        //const data = await fs.promises.readFile(`${workingDir}/x86_64/Packages`, 'utf8');
+        const raw = await m.rawContent(bucketName, 'x86_64/Packages')
+        const data = raw.toString()
         assert.include(data, 'automount_1-40_x86_64.ipk')
         assert.include(data, 'tcping_0.3-1_x86_64.ipk')
     });

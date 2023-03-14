@@ -133,5 +133,25 @@ export class MinioGateway {
     async uploadFile(bucketName, objectName, localFilePath) {
         return this.minioClient.fPutObject(bucketName, objectName, localFilePath)
     }
+
+    async rawContent(bucketName, objectName) {
+        return new Promise((resolve, reject) => {
+            const buffer = []
+            this.minioClient.getObject(bucketName, objectName, function (err, dataStream) {
+                if (err) {
+                    return reject(err)
+                }
+                dataStream.on('data', function (chunk) {
+                    buffer.push(chunk)
+                })
+                dataStream.on('end', function () {
+                    resolve(Buffer.concat(buffer))
+                })
+                dataStream.on('error', function (err) {
+                    return reject(err)
+                })
+            })
+        })
+    }
 }
 
