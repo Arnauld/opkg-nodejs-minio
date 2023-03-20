@@ -33,6 +33,31 @@ export class MinioGateway {
             accessKey: 'console',
             secretKey: 'console_Pwd'
         });
+        this.resources = []
+    }
+
+    close() {
+        const self = this
+        this.resources.forEach(resource => {
+            resource.apply(self)
+        })
+        this.minioClient.transport.closeAllConnections()
+    }
+
+    onNotification(record) {
+        console.log('notification', record.s3.object)
+    }
+
+    registerListener({ bucketName, prefix }) {
+        const self = this
+        const listener = this.minioClient.listenBucketNotification(bucketName, prefix, "", ['s3:ObjectCreated:*', 's3:ObjectRemoved:*'])
+        this.resources.push(async function() {
+            console.log('Freeing listener  ***')
+            listener.stop()
+            listener.removeAllListeners()
+            await self.minioClient.removeAllBucketNotification(bucketName).catch(err => console.error(err))
+        })
+        listener.on('notification', this.onNotification)
     }
 
     async generatePackage({ bucketName, prefix, dir }) {

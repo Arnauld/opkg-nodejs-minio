@@ -14,7 +14,8 @@
   "devDependencies": {
     "chai": "^4.3.7",
     "file-type": "^18.2.1",
-    "mocha": "^10.2.0"
+    "mocha": "^10.2.0",
+    "wtfnode": "^0.9.1"
   },
   "scripts": {
     "test": "mocha"

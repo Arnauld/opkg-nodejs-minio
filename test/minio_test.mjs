@@ -1,16 +1,30 @@
 import { MinioGateway } from '../src/minio.mjs'
 import * as fs from 'fs'
 import { assert } from 'chai'
+import * as wtf from 'wtfnode'
+
+
 let inc = 0
 
 describe('minio/opkg', function () {
+    let m
+    let bucketName
+    let workingDir
 
-    it('Update empty repo', async function () {
-        const bucketName = "test-" + Date.now() + "-" + (inc++)
-        const workingDir = './out/' + bucketName
+    beforeEach(async function () {
+        bucketName = "test-" + Date.now() + "-" + (inc++)
+        workingDir = './out/' + bucketName
         await fs.promises.mkdir(workingDir, { recursive: true })
 
-        const m = new MinioGateway({ workingDir })
+        m = new MinioGateway({ workingDir })
+    });
+
+    afterEach(function () {
+        m.close()
+        wtf.dump()
+    });
+
+    it('Update empty repo', async function () {
 
         await m.makeBucket(bucketName)
         await m.updateIndex(bucketName, 'x86_64/')
@@ -22,12 +36,6 @@ describe('minio/opkg', function () {
     });
 
     it('Update non-empty repo', async function () {
-        const bucketName = "test-" + Date.now() + "-" + (inc++)
-        const workingDir = './out/' + bucketName
-        await fs.promises.mkdir(workingDir, { recursive: true })
-
-        const m = new MinioGateway({ workingDir })
-
         await m.makeBucket(bucketName)
         await m.uploadFile(bucketName, 'x86_64/automount_1-40_x86_64.ipk', "./samples/repo/automount_1-40_x86_64.ipk")
         await m.updateIndex(bucketName, 'x86_64/')
@@ -41,16 +49,11 @@ describe('minio/opkg', function () {
 
 
     it('Update existing repo - update existing Packages', async function () {
-        const bucketName = "test-" + Date.now() + "-" + (inc++)
-        const workingDir = './out/' + bucketName
-        await fs.promises.mkdir(workingDir, { recursive: true })
-        
-        const m = new MinioGateway({ workingDir })
-        
         await m.makeBucket(bucketName)
+        m.registerListener({ bucketName, prefix: 'x86_64/' })
         await m.uploadFile(bucketName, 'x86_64/automount_1-40_x86_64.ipk', "./samples/repo/automount_1-40_x86_64.ipk")
         await m.updateIndex(bucketName, 'x86_64/')
-        
+
         // clear working dir
         await fs.promises.rm(workingDir, { recursive: true, force: true })
         await fs.promises.mkdir(workingDir, { recursive: true })
