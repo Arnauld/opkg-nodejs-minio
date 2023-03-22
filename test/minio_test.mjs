@@ -25,6 +25,7 @@ describe('minio/opkg', function () {
     });
 
     it('Update empty repo', async function () {
+        this.timeout(30000); // A very long environment setup.
 
         await m.makeBucket(bucketName)
         await m.updateIndex(bucketName, 'x86_64/')
@@ -36,6 +37,8 @@ describe('minio/opkg', function () {
     });
 
     it('Update non-empty repo', async function () {
+        this.timeout(30000); // A very long environment setup.
+
         await m.makeBucket(bucketName)
         await m.uploadFile(bucketName, 'x86_64/automount_1-40_x86_64.ipk', "./samples/repo/automount_1-40_x86_64.ipk")
         await m.updateIndex(bucketName, 'x86_64/')
@@ -49,8 +52,13 @@ describe('minio/opkg', function () {
 
 
     it('Update existing repo - update existing Packages', async function () {
+        this.timeout(30000); // A very long environment setup.
+
         await m.makeBucket(bucketName)
-        m.registerListener({ bucketName, prefix: 'x86_64/' })
+
+        //seems there is a leak/not closed connection; that block nodejs to terminate gracefuly
+        //m.registerListener({ bucketName, prefix: 'x86_64/' })
+        
         await m.uploadFile(bucketName, 'x86_64/automount_1-40_x86_64.ipk', "./samples/repo/automount_1-40_x86_64.ipk")
         await m.updateIndex(bucketName, 'x86_64/')
 

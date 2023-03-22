@@ -36,12 +36,13 @@ export class MinioGateway {
         this.resources = []
     }
 
-    close() {
+    async close() {
+        //log.debug('releasing client...', typeof this.minioClient.transport, this.minioClient.transport)
         const self = this
-        this.resources.forEach(resource => {
-            resource.apply(self)
-        })
-        this.minioClient.transport.closeAllConnections()
+        for (let i = 0; i < this.resources.length; i++) {
+            await this.resources[i].apply(self)
+        }
+        //this.minioClient.transport.closeAllConnections()
     }
 
     onNotification(record) {
@@ -51,8 +52,8 @@ export class MinioGateway {
     registerListener({ bucketName, prefix }) {
         const self = this
         const listener = this.minioClient.listenBucketNotification(bucketName, prefix, "", ['s3:ObjectCreated:*', 's3:ObjectRemoved:*'])
-        this.resources.push(async function() {
-            console.log('Freeing listener  ***')
+        this.resources.push(async function () {
+            log.debug('Freeing listener  ***')
             listener.stop()
             listener.removeAllListeners()
             await self.minioClient.removeAllBucketNotification(bucketName).catch(err => console.error(err))
@@ -179,4 +180,3 @@ export class MinioGateway {
         })
     }
 }
-
